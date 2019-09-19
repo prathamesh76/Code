@@ -1,0 +1,54 @@
+Add below highlighted @Bean definition in your template project to enable AJP port.
+Add it into spring boot Main class file or create different @Configuration class file . By default Embedded server does not start AJP port we have to explicitly  need to enable it using below configuration.
+
+
+@SpringBootApplication
+@EnableFeignClients
+public class ProjectApplication  extends SpringBootServletInitializer{
+          
+          @Value("${tomcat.ajp.port}")   // insert property tomcat.ajp.port = 8009 into  yml file
+            int ajpPort;
+
+          
+          public static void main(String[] args) {
+                   SpringApplication.run(ProjectApplication.class, args);
+          }
+          @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(ProjectApplication.class);
+    }
+          
+                   @Bean
+              public static Request.Options requestOptions(ConfigurableEnvironment env) {
+                  int ribbonReadTimeout = env.getProperty("ribbon.ReadTimeout", int.class, 70000);
+                  int ribbonConnectionTimeout = env.getProperty("ribbon.ConnectTimeout", int.class, 60000);
+
+                  return new Request.Options(ribbonConnectionTimeout, ribbonReadTimeout);
+              }
+          
+                   @Bean
+                            public WebServerFactoryCustomizer<TomcatServletWebServerFactory> servletContainer() {
+                              return server -> {
+                                if (server instanceof TomcatServletWebServerFactory) {
+                                    ((TomcatServletWebServerFactory) server).addAdditionalTomcatConnectors(redirectConnector());
+                                }
+                              };
+                            }
+
+                            private Connector redirectConnector() {
+                               Connector connector = new Connector("AJP/1.3");
+                               connector.setScheme("http");
+                               connector.setPort(ajpPort);
+                               connector.setSecure(false);
+                               connector.setAllowTrace(false);
+                               return connector;
+                            }
+}
+
+
+
+YML File 
+
+tomcat:
+  ajp:
+   port: 8009 
